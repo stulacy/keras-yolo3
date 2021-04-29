@@ -5,10 +5,16 @@ import argparse
 import json
 import cv2
 from utils.utils import get_yolo_boxes, makedirs
-from utils.bbox import draw_boxes
+from utils.bbox import draw_boxes, draw_box
 from keras.models import load_model
 from tqdm import tqdm
 import numpy as np
+try:
+    from PIL import Image
+except ImportError:
+    import Image
+import pytesseract
+import sys
 
 def _main_(args):
     config_path  = args.conf
@@ -31,6 +37,11 @@ def _main_(args):
     ###############################
     os.environ['CUDA_VISIBLE_DEVICES'] = config['train']['gpus']
     infer_model = load_model(config['train']['saved_weights_name'])
+
+    ###############################
+    #   Setup Keras OCR
+    ###############################
+    #pipeline = keras_ocr.pipeline.Pipeline()
 
     ###############################
     #   Predict bounding boxes 
@@ -84,7 +95,18 @@ def _main_(args):
 
                     for i in range(len(images)):
                         # draw bounding boxes on the image using labels
-                        draw_boxes(images[i], batch_boxes[i], config['model']['labels'], obj_thresh)   
+                        #draw_boxes(images[i], batch_boxes[i], config['model']['labels'], obj_thresh)   
+                        for box in batch_boxes[i]:
+                            # Only one class: licence_plate
+                            if box.classes[0] > obj_thresh:
+                                # Crop image to these coords
+                                crop = images[i][box.ymin:box.ymax,
+                                             box.xmin:box.xmax]
+                                raw = pytesseract.image_to_string(crop,
+                                                                  lang="eng",
+                                                                  config="--psm 6 --oem 3")
+                                clean = raw.strip()
+                                draw_box(images[i], box, clean)
 
                         # show the video with detection bounding boxes          
                         if show_window: cv2.imshow('video with bboxes', images[i])  
@@ -116,8 +138,21 @@ def _main_(args):
             # predict the bounding boxes
             boxes = get_yolo_boxes(infer_model, [image], net_h, net_w, config['model']['anchors'], obj_thresh, nms_thresh)[0]
 
+            # Run OCR on bounding box
+            for i, box in enumerate(boxes):
+                # Only one class: licence_plate
+                if box.classes[0] > obj_thresh:
+                    # Crop image to these coords
+                    crop = image[box.ymin:box.ymax,
+                                 box.xmin:box.xmax]
+                    raw = pytesseract.image_to_string(crop,
+                                                      lang="eng",
+                                                      config="--psm 6 --oem 3")
+                    clean = raw.strip()
+                    draw_box(image, box, clean)
+
             # draw bounding boxes on the image using labels
-            draw_boxes(image, boxes, config['model']['labels'], obj_thresh) 
+            #draw_boxes(image, boxes, config['model']['labels'], obj_thresh)
      
             # write the image with bounding boxes to file
             cv2.imwrite(output_path + image_path.split('/')[-1], np.uint8(image))         
