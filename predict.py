@@ -39,11 +39,6 @@ def _main_(args):
     infer_model = load_model(config['train']['saved_weights_name'])
 
     ###############################
-    #   Setup Keras OCR
-    ###############################
-    #pipeline = keras_ocr.pipeline.Pipeline()
-
-    ###############################
     #   Predict bounding boxes 
     ###############################
     if 'webcam' in input_path: # do detection on the first webcam
@@ -66,30 +61,31 @@ def _main_(args):
             if cv2.waitKey(1) == 27: 
                 break  # esc to quit
         cv2.destroyAllWindows()        
-    elif input_path[-4:] == '.mp4': # do detection on a video  
+    elif input_path[-4:].lower() == '.mp4': # do detection on a video
         video_out = output_path + input_path.split('/')[-1]
         video_reader = cv2.VideoCapture(input_path)
 
         nb_frames = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_h = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frame_w = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
+        fps = int(video_reader.get(cv2.CAP_PROP_FPS))
 
         video_writer = cv2.VideoWriter(video_out,
-                               cv2.VideoWriter_fourcc(*'MPEG'), 
-                               50.0, 
+                               cv2.VideoWriter_fourcc(*'mp4v'),
+                               fps,
                                (frame_w, frame_h))
         # the main loop
         batch_size  = 1
         images      = []
         start_point = 0 #%
         show_window = False
-        for i in tqdm(range(nb_frames)):
+        for frame_num in tqdm(range(nb_frames)):
             _, image = video_reader.read()
 
-            if (float(i+1)/nb_frames) > start_point/100.:
+            if (float(frame_num+1)/nb_frames) > start_point/100.:
                 images += [image]
 
-                if (i%batch_size == 0) or (i == (nb_frames-1) and len(images) > 0):
+                if (frame_num%batch_size == 0) or (frame_num == (nb_frames-1) and len(images) > 0):
                     # predict the bounding boxes
                     batch_boxes = get_yolo_boxes(infer_model, images, net_h, net_w, config['model']['anchors'], obj_thresh, nms_thresh)
 
@@ -102,11 +98,15 @@ def _main_(args):
                                 # Crop image to these coords
                                 crop = images[i][box.ymin:box.ymax,
                                              box.xmin:box.xmax]
-                                raw = pytesseract.image_to_string(crop,
-                                                                  lang="eng",
-                                                                  config="--psm 6 --oem 3")
-                                clean = raw.strip()
-                                draw_box(images[i], box, clean)
+
+                                # Don't ask how a crop can have 0 in a
+                                # dimension, but it does happen
+                                if not any(x == 0 for x in crop.shape):
+                                    raw = pytesseract.image_to_string(crop,
+                                                                      lang="eng",
+                                                                      config="--psm 7 --oem 3")
+                                    clean = raw.strip()
+                                    draw_box(images[i], box, clean)
 
                         # show the video with detection bounding boxes          
                         if show_window: cv2.imshow('video with bboxes', images[i])  
@@ -147,13 +147,10 @@ def _main_(args):
                                  box.xmin:box.xmax]
                     raw = pytesseract.image_to_string(crop,
                                                       lang="eng",
-                                                      config="--psm 6 --oem 3")
+                                                      config="--psm 7 --oem 3")
                     clean = raw.strip()
                     draw_box(image, box, clean)
 
-            # draw bounding boxes on the image using labels
-            #draw_boxes(image, boxes, config['model']['labels'], obj_thresh)
-     
             # write the image with bounding boxes to file
             cv2.imwrite(output_path + image_path.split('/')[-1], np.uint8(image))         
 
