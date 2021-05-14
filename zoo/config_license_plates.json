@@ -7,11 +7,11 @@
     },
 
     "train": {
-        "train_image_folder":   "/home/stuart/GoogleDrive/WACL/ANPR/Lucian/dataset/train/images/",
-        "train_annot_folder":   "/home/stuart/GoogleDrive/WACL/ANPR/Lucian/dataset/train/annots/",
+        "train_image_folder":   "include/data/train/images/",
+        "train_annot_folder":   "include/data/train/annots/",
         "cache_name":           "license_plate.pkl",
 
-        "pretrained_weights":   "/home/stuart/GoogleDrive/WACL/ANPR/Lucian/models/pretrained_lp.h5",
+        "pretrained_weights":   "include/models/pretrained_lp.h5",
 
         "train_times":          4,
         "batch_size":           16,
@@ -28,13 +28,13 @@
         "class_scale":          1,
 
         "tensorboard_dir":      "logs",
-        "saved_weights_name":   "/home/stuart/GoogleDrive/WACL/ANPR/Lucian/models/license_plate.h5",
+        "saved_weights_name":   "include/models/license_plate.h5",
         "debug":                true
     },
 
     "valid": {
-        "valid_image_folder":   "/home/stuart/GoogleDrive/WACL/ANPR/Lucian/dataset/valid/images/",
-        "valid_annot_folder":   "/home/stuart/GoogleDrive/WACL/ANPR/Lucian/dataset/valid/annots/",
+        "valid_image_folder":   "include/data/valid/images/",
+        "valid_annot_folder":   "include/data/valid/annots/",
         "cache_name":           "valid.pkl",
 
         "valid_times":          1

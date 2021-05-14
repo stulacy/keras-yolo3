@@ -91,7 +91,6 @@ def _main_(args):
 
                     for i in range(len(images)):
                         # draw bounding boxes on the image using labels
-                        #draw_boxes(images[i], batch_boxes[i], config['model']['labels'], obj_thresh)   
                         for box in batch_boxes[i]:
                             # Only one class: licence_plate
                             if box.classes[0] > obj_thresh:
@@ -102,11 +101,21 @@ def _main_(args):
                                 # Don't ask how a crop can have 0 in a
                                 # dimension, but it does happen
                                 if not any(x == 0 for x in crop.shape):
-                                    raw = pytesseract.image_to_string(crop,
+                                    # Preprocess licence plate to make OCR
+                                    # easier
+                                    grey = cv2.cvtColor(crop,
+                                                        cv2.COLOR_BGR2GRAY)
+                                    grey = cv2.resize(grey, None, fx=3, fy=3,
+                                                      interpolation=cv2.INTER_CUBIC)
+                                    blur = cv2.GaussianBlur(grey, (5,5), 0)
+                                    blur2 = cv2.medianBlur(blur, 3)
+                                    ret, thresh = cv2.threshold(blur2, 0, 255,
+                                                                cv2.THRESH_OTSU)
+                                    pred = pytesseract.image_to_string(thresh,
                                                                       lang="eng",
-                                                                      config="--psm 7 --oem 3")
-                                    clean = raw.strip()
-                                    draw_box(images[i], box, clean)
+                                                                      config="--psm 7 --oem 3 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ").strip()
+
+                                    draw_box(images[i], box, pred)
 
                         # show the video with detection bounding boxes          
                         if show_window: cv2.imshow('video with bboxes', images[i])  
